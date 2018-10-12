@@ -11,27 +11,22 @@ se pide calcular para cada tweet un valor denominado “sentimiento del tweet”
 que se obtiene como la suma de los “sentimientos” de los términos que aparecen en el tweet.
 """
 
-import re
+import re, string
 import json
+ 
 
-"""
-#elimina signos de puntuacion.
 def remove_punctuation ( text ):
-    return re.sub('[%s]' % re.escape(string.punctuation), ' ', text)"""
+    return re.sub('[%s]' % re.escape(string.punctuation), ' ', text)
 
-#devuelve el contenido del fichero de sentimientos
 def lectura_sentimientos(fichero):
     valores = {}
     with open(fichero) as s: 
         for linea in s:
             termino,valor = linea.split("\t")
             valores[termino] = valor.rstrip('\n')
-            #Controlamos la posibilidad de que en una fila exista mas de un termino
-            #for t in termino.split():
-            #    valores[t] = valor.rstrip('\n')
     return valores
 
-#procesa el fichero que contiene los json
+#procesa el fichero que contiene los json y devuelve una lista con cada tweet
 def lectura_twitter_json(fichero_json):
     tweets = []
     with open(fichero_json) as t: 
@@ -39,23 +34,18 @@ def lectura_twitter_json(fichero_json):
             tweets.append(linea.rstrip('\n'))
     return tweets
 
-
-#a partir de una lista conteniendo todos los JSON, extrae el tweet y los mete en otra lista.
+#a partir de una lista conteniendo todos los JSON, extrae el texto tweet y los mete en otra lista.
 def tweet_parser(lista_tweets_json):
     tweets = []
     for lt in lista_tweets_json:
         json_datos=json.loads(lt)
         if 'created_at' in json_datos:
-            tweets.append(json_datos['text'].rstrip('\n'))
+            tweets.append(remove_punctuation(json_datos['text'].rstrip('\n')))
     return tweets
 
 
-
-#calculo del valor del sentimiento
-#para cada TWEET, los paso a una lista.
-#Itero el diccionario y busco sobre la lista anterior. 
-#Imprimo el calculo y voy al siguiente tweet            
 def calcular_sentimiento(sent,twt):
+    terminos=[]
     if len(twt) == 0: 
         print("El fichero de Tweets está vacío.")
     else:
@@ -70,22 +60,26 @@ def calcular_sentimiento(sent,twt):
                     calc_sentimiento=calc_sentimiento+(int(sent[s])*t.count(s))
             print ("*************************************************+****************")
             print ("El siguiente TWEET:",t,"Tiene un sentimiento asociado de:",calc_sentimiento)
-
+            
+            print (t)
+            terminos = t.split()
+            #print("\nTerminos:",terminos,)
+            for trm in terminos:
+                if trm not in sent:
+                    print ("El sentimiento asociado del termino",trm,"es",calc_sentimiento)
+            
 
 
 #Programa Principal     
 #"conf/sentimientos.txt"
-#"tweets/tweet1.txt"
-""" PROGRAMA FINAL
+#"tweets/salida_tweets.json"
+
 print("Ayuda. El fichero de Tweets puede contener varios tweet separados por retorno de carro o un tweet individual.")
 sentimientos_file=input("Introduzca la ruta al fichero de sentimientos:")
 tweet_file=input("Introduzca la ruta al fichero que contiene los Tweet:")   
-        
-sentimientos=lectura_sentimientos(sentimientos_file)
-tweet=lectura_twitter(tweet_file)
-calcular_sentimiento(sentimientos,tweet)"""
 
-sentimientos=lectura_sentimientos("conf/Sentimientos.txt")
-lista_json=lectura_twitter_json("tweets/salida_tweets.json")
+sentimientos=lectura_sentimientos(sentimientos_file)
+lista_json=lectura_twitter_json(tweet_file)
 lista_tweets=tweet_parser(lista_json)
 calcular_sentimiento(sentimientos,lista_tweets)
+
