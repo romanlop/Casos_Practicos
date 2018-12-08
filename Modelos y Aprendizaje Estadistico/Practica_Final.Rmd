@@ -1,0 +1,74 @@
+---
+title: "Practica Final"
+output: html_notebook
+---
+###Modelos y Aprendizaje estadístico con R.
+####Román López Seoane
+****
+****
+#####Realizamos la carga del dataset y realizamos algunas inspecciones iniciales de los datos.
+```{r}
+#rm(list=ls())
+datos_bancarios <- read.csv(file="datos/datos_bancarios.csv", header=FALSE, sep=";")
+colnames(datos_bancarios)[16] <- "Aprobado"
+head(datos_bancarios)
+str(datos_bancarios)
+attach(datos_bancarios)
+```
+
+Comprobamos que existen valores nulos en algunos casos, pero no están codificados como null. Lo modificamos para simplificar su gestión posteriormente. 
+```{r}
+datos_bancarios[datos_bancarios=="?"]<-NA
+sapply(datos_bancarios, function(x) sum(is.na(x)))
+```
+
+Atendiendoa la información proporcionada en el ejercicio, vamos a realizar algunos cambios en los tipos de datos del data.frame:
+```{r}
+datos_bancarios[,2] <- sapply(datos_bancarios[,2], as.double)
+datos_bancarios[,14] <- sapply(datos_bancarios[,14], as.integer)
+head(datos_bancarios)
+```
+****
+****
+#####Realiza una inspección por variables de la distribución de aprobación de crédito en función de cada atributo visualmente. Realiza las observaciones pertinentes. ¿ Qué variables son mejores para separar los datos?
+
+Primero vamos a verlo de forma individual
+```{r}
+library(ggplot2)
+#Variables continuas: V2, V3, V8, V11, V14 y V15
+ggplot(datos_bancarios, aes(x=V2, fill=Aprobado)) + geom_density(alpha=.3)
+ggplot(datos_bancarios, aes(x=V3, fill=Aprobado)) + geom_density(alpha=.3)
+ggplot(datos_bancarios, aes(x=V8, fill=Aprobado)) + geom_density(alpha=.3)
+ggplot(datos_bancarios, aes(x=V11, fill=Aprobado)) + geom_density(alpha=.3)
+ggplot(datos_bancarios, aes(x=V14, fill=Aprobado)) + geom_density(alpha=.3)
+ggplot(datos_bancarios, aes(x=V15, fill=Aprobado)) + geom_density(alpha=.3)
+
+```
+
+```{r}
+ggplot(datos_bancarios, aes(x=V8, fill=Aprobado)) +
+    geom_histogram(binwidth=2, alpha=.5,position="stack")
+```
+
+```{r}
+head(datos_bancarios)
+#Variables cualitativas: V1,V4,V5,V6,V7,V9,V10,V12,V13
+
+#Varias opciones para pintarlas
+plot(Aprobado ~ V1, data = datos_bancarios)
+
+#Varias opciones para pintarlas
+plot(V1) 
+
+#Varias opciones para pintarlas
+bartable = table(Aprobado, V13)  ## get the cross tab
+barplot(bartable, beside = TRUE, legend = levels(unique(Aprobado)))  ## plot 
+
+
+#OJO, la V9 tiene muy buena pinta la V10 un poco menos pero tb
+
+#Ver como podemos hacer un par de ScatterPlots
+```
+
+****
+****
