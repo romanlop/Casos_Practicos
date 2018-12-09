@@ -33,6 +33,7 @@ head(datos_bancarios)
 ```
 ****
 ****
+##Apartado 1
 #####Realiza una inspección por variables de la distribución de aprobación de crédito en función de cada atributo visualmente. Realiza las observaciones pertinentes. ¿ Qué variables son mejores para separar los datos?
 
 En primer lugar realizamos una inspección de las variables cualitativas
@@ -81,29 +82,73 @@ ggplot(datos_bancarios, aes(x=d, fill=Aprobado)) + geom_density(alpha=.3,positio
   xlim(5800, 80000)
 ```
 
+De forma complementaria vamos a hacer un Test Chi-cuadrado con las variables cualitativas. Así mismo vamos a ver la tabla de contingencia para alguna de las variables.
+```{r}
+#install.packages("gmodels") 
+library(gmodels) 
+tabla <- CrossTable (datos_bancarios$V9, datos_bancarios$Aprobado, prop.chisq = FALSE)
+tabla
 
+```
+
+```{r}
+tabla_chi <- CrossTable (datos_bancarios$V9, datos_bancarios$Aprobado, chisq=TRUE, prop.chisq = TRUE)
+tabla_chi$chisq
+```
+
+Para las cuantitativas vamos a pintar la matriz de correlación.
+```{r}
+res <- cor(data.matrix(na.omit(select(datos_bancarios,V2,V3,V8,V11,V14,V15,Aprobado))))
+res[7,]
+```
+
+####Conclusiones
 >La variable cualitativa V9 es buena separando los datos en Créditos Aprobados o Rechazados. De este modo cuando dicha variable toma el valor "f" prácticamente está descartada la aprobación del crédito, mientras que en aquellso casos en los que toma el valor "t" se observa el efecto contrario. 
 La variable V10 también parece una buena predictora pero en menor medida en relación a la V9.
 
 >En relacción a las cuantitativas. 
 -Valores bajos de la V11 indican rechazo y los valores mas altos aumentan la probabilidad de recibir un crédito. De hecho a partir de 15 se aprueban todos los créditos. 
 -Observamos algo similar en relación a la V8. Valores grandes también parecen garantizar la aprobación del crédito. 
--Destacar además la variable V15. Para valores mayores a 5600 aproximadamente se aprueban todos los créditos. 
+-Destacar además la variable V15. Para valores mayores a 5600 aproximadamente se aprueban todos los créditos. En todo caso parece que se trata de datos residuales. En la matriz de correlacción vemos un indice de 0.17.
 
-
-Pintar alguna correlacción entre las variables. Una matriz o así. Para cualitativas tenemos el test CHI^2
+****
+****
+##Apartado 2
+#####Prepara el dataset convenientemente e imputa los valores faltantes usando la librería missForest
 ```{r}
-res <- cor(datos_bancarios)
-round(res, 2)
+sapply(datos_bancarios, function(x) sum(is.na(x)))
 ```
 
+```{r}
+library(missForest)
+```
 
+```{r}
+datos_bancarios_comp <- missForest(datos_bancarios,maxiter = 5,ntree = 500,variablewise = T)
+```
 
+```{r}
+datos_bancarios_comp$OOBerror
+```
 
-
-
-
-
+```{r}
+sapply(datos_bancarios_comp$ximp, function(x) sum(is.na(x)))
+datos_bancarios<-datos_bancarios_comp$ximp
+```
 
 ****
 ****
+##Apartado 3
+#####Divide el dataset tomando las primeras 590 instancias como train y las últimas 100 como test.
+```{r}
+dim(datos_bancarios)
+x_train <-datos_bancarios[1:590,1:15]
+y_train <- datos_bancarios[1:590,16]
+x_test <- datos_bancarios[591:690,1:15]
+y_test <- datos_bancarios[591:690,16]
+```
+
+****
+****
+##Apartado 4
+#####Entrena un modelo de regresión logística con regularización Ridge y Lasso en train seleccionando el que mejor AUC tenga. Da las métricas en test.
