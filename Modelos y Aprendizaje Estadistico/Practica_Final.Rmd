@@ -6,14 +6,17 @@ output: html_notebook
 ####Román López Seoane
 ****
 ****
+```{r}
+#detach(datos_bancarios)
+#rm(list=ls())
+```
+
 #####Realizamos la carga del dataset y realizamos algunas inspecciones iniciales de los datos.
 ```{r}
-#rm(list=ls())
 datos_bancarios <- read.csv(file="datos/datos_bancarios.csv", header=FALSE, sep=";")
 colnames(datos_bancarios)[16] <- "Aprobado"
 head(datos_bancarios)
 str(datos_bancarios)
-attach(datos_bancarios)
 ```
 
 Comprobamos que existen valores nulos en algunos casos, pero no están codificados como null. Lo modificamos para simplificar su gestión posteriormente. 
@@ -32,43 +35,75 @@ head(datos_bancarios)
 ****
 #####Realiza una inspección por variables de la distribución de aprobación de crédito en función de cada atributo visualmente. Realiza las observaciones pertinentes. ¿ Qué variables son mejores para separar los datos?
 
-Primero vamos a verlo de forma individual
+En primer lugar realizamos una inspección de las variables cualitativas
 ```{r}
+#install.packages("gtools")
 library(ggplot2)
+library(tidyr)
+library(dplyr)
+
+#Utilizamos gather para preparar los datos y seleccionamos solo las variables cualitativas:
+select(datos_bancarios,V1,V4,V5,V6,V7,V9,V10,V12,V13,Aprobado) %>% gather(-Aprobado, key = "var", value = "value")  %>%
+  ggplot(aes(x=value, y=Aprobado, fill=Aprobado)) +
+  geom_bar(stat="identity")+theme_minimal() +
+  facet_wrap(~var, scales = "free") +
+  ggtitle("Aprobación de Créditos: Variables Cualitativas") +
+  xlab("Valores") +
+  ylab("Tasa de aprobación") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5)) 
+```
+
+A continuación procedemos a examinar las variables cuantitativas.
+```{r}
 #Variables continuas: V2, V3, V8, V11, V14 y V15
-ggplot(datos_bancarios, aes(x=V2, fill=Aprobado)) + geom_density(alpha=.3)
-ggplot(datos_bancarios, aes(x=V3, fill=Aprobado)) + geom_density(alpha=.3)
-ggplot(datos_bancarios, aes(x=V8, fill=Aprobado)) + geom_density(alpha=.3)
-ggplot(datos_bancarios, aes(x=V11, fill=Aprobado)) + geom_density(alpha=.3)
-ggplot(datos_bancarios, aes(x=V14, fill=Aprobado)) + geom_density(alpha=.3)
-ggplot(datos_bancarios, aes(x=V15, fill=Aprobado)) + geom_density(alpha=.3)
-
+select(datos_bancarios,V2,V3,V8,V11,V14,V15,Aprobado) %>% gather(-Aprobado, key = "var", value = "value")  %>%
+  ggplot(aes(x=value, fill=Aprobado)) +
+  geom_histogram(binwidth=2, alpha=.5,position="stack") +theme_minimal() +
+  facet_wrap(~var, scales = "free") +
+  ggtitle("Aprobación de Créditos: Variables Cuantitativas") +
+  xlab("Valores") +
+  ylab("Tasa de aprobación") +
+  theme_bw() +
+  theme(plot.title = element_text(hjust = 0.5)) 
 ```
 
+Para la variable V15 pintamos una función de densidad. Vemos que valores cercanos a 0 influyen en que no se apruebe el crédito, pero luego parece comportarse de forma muy estable para ambos valores.
 ```{r}
-ggplot(datos_bancarios, aes(x=V8, fill=Aprobado)) +
-    geom_histogram(binwidth=2, alpha=.5,position="stack")
+d<-datos_bancarios$V15
+ggplot(datos_bancarios, aes(x=d, fill=Aprobado)) + geom_density(alpha=.3,position="stack") +
+  xlim(0, 100)
+ggplot(datos_bancarios, aes(x=d, fill=Aprobado)) + geom_density(alpha=.3,position="stack") +
+  xlim(100, 5000)
+ggplot(datos_bancarios, aes(x=d, fill=Aprobado)) + geom_density(alpha=.3,position="stack") +
+  xlim(5000, 5800)
+ggplot(datos_bancarios, aes(x=d, fill=Aprobado)) + geom_density(alpha=.3,position="stack") +
+  xlim(5800, 80000)
 ```
 
+
+>La variable cualitativa V9 es buena separando los datos en Créditos Aprobados o Rechazados. De este modo cuando dicha variable toma el valor "f" prácticamente está descartada la aprobación del crédito, mientras que en aquellso casos en los que toma el valor "t" se observa el efecto contrario. 
+La variable V10 también parece una buena predictora pero en menor medida en relación a la V9.
+
+>En relacción a las cuantitativas. 
+-Valores bajos de la V11 indican rechazo y los valores mas altos aumentan la probabilidad de recibir un crédito. De hecho a partir de 15 se aprueban todos los créditos. 
+-Observamos algo similar en relación a la V8. Valores grandes también parecen garantizar la aprobación del crédito. 
+-Destacar además la variable V15. Para valores mayores a 5600 aproximadamente se aprueban todos los créditos. 
+
+
+Pintar alguna correlacción entre las variables. Una matriz o así. Para cualitativas tenemos el test CHI^2
 ```{r}
-head(datos_bancarios)
-#Variables cualitativas: V1,V4,V5,V6,V7,V9,V10,V12,V13
-
-#Varias opciones para pintarlas
-plot(Aprobado ~ V1, data = datos_bancarios)
-
-#Varias opciones para pintarlas
-plot(V1) 
-
-#Varias opciones para pintarlas
-bartable = table(Aprobado, V13)  ## get the cross tab
-barplot(bartable, beside = TRUE, legend = levels(unique(Aprobado)))  ## plot 
-
-
-#OJO, la V9 tiene muy buena pinta la V10 un poco menos pero tb
-
-#Ver como podemos hacer un par de ScatterPlots
+res <- cor(datos_bancarios)
+round(res, 2)
 ```
+
+
+
+
+
+
+
+
 
 ****
 ****
