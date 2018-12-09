@@ -1,9 +1,9 @@
 ---
 title: "Practica Final"
-output: html_notebook
+output: pdf_document
 ---
 ###Modelos y Aprendizaje estadístico con R.
-####Román López Seoane
+####Román López Seoane.
 ****
 ****
 ```{r}
@@ -104,7 +104,7 @@ res[7,]
 
 ####Conclusiones
 >La variable cualitativa V9 es buena separando los datos en Créditos Aprobados o Rechazados. De este modo cuando dicha variable toma el valor "f" prácticamente está descartada la aprobación del crédito, mientras que en aquellso casos en los que toma el valor "t" se observa el efecto contrario. 
-La variable V10 también parece una buena predictora pero en menor medida en relación a la V9.
+La variable V10 también parece una buena predictora pero en menor medida en relación a la V9. También vemos que la V6 con valor X tiene bastente influencia.
 
 >En relacción a las cuantitativas. 
 -Valores bajos de la V11 indican rechazo y los valores mas altos aumentan la probabilidad de recibir un crédito. De hecho a partir de 15 se aprueban todos los créditos. 
@@ -142,13 +142,138 @@ datos_bancarios<-datos_bancarios_comp$ximp
 #####Divide el dataset tomando las primeras 590 instancias como train y las últimas 100 como test.
 ```{r}
 dim(datos_bancarios)
-x_train <-datos_bancarios[1:590,1:15]
-y_train <- datos_bancarios[1:590,16]
-x_test <- datos_bancarios[591:690,1:15]
-y_test <- datos_bancarios[591:690,16]
+#x_train <-datos_bancarios[1:590,1:15]
+#y_train <- datos_bancarios[1:590,16]
+#x_test <- datos_bancarios[591:690,1:15]
+#y_test <- datos_bancarios[591:690,16]
+
+data_train <-datos_bancarios[1:590,]
+data_test <- datos_bancarios[591:690,]
+
 ```
 
 ****
 ****
 ##Apartado 4
 #####Entrena un modelo de regresión logística con regularización Ridge y Lasso en train seleccionando el que mejor AUC tenga. Da las métricas en test.
+```{r}
+library(caret)
+library(glmnet)
+library(lattice)
+library(e1071)
+```
+
+Para realizar la predicción vamos a realizar una preparación adicional de los datos, para convertir las variables categóricas predictoras en variables dummy. Hacemos lo mismo para la variable a predecir. 
+```{r}
+x <- model.matrix(Aprobado~., data_train)[,-1]
+y <- ifelse(data_train$Aprobado == "+", 1, 0)
+
+x_test <- model.matrix(Aprobado~., data_test)[,-1]
+y_test <- ifelse(data_test$Aprobado == "+", 1, 0)
+
+```
+
+
+#### MODELO RIDGE
+Realizamos en primer lugar el entretamiento con regresion penalizada Ridge Alpha = 0. Buscamos el mejor Lambda. Utilizamos binomial al estar prediciendo una variable que toma dos posibles valores.
+```{r}
+set.seed(999) 
+cv.ridge <- cv.glmnet(x, y, alpha = 0, family = "binomial",parallel=FALSE, standardize=TRUE, type.measure='auc')
+cv.ridge$lambda.min
+min(cv.ridge$cvm)
+max(cv.ridge$cvm)
+#error estandar
+cv.ridge$lambda.1se
+```
+
+```{r}
+plot(cv.ridge)
+```
+
+```{r}
+#Con el valor mínimo de Lambda obtenemos los siguientes coeficientes
+coef(cv.ridge, s=cv.ridge$lambda.min)
+```
+
+```{r}
+coef(cv.ridge, s=cv.ridge$lambda.1se)
+```
+
+Vamos a computar el modelo con lamba.min
+```{r}
+y_pred_ridge <- as.numeric(predict.glmnet(cv.ridge$glmnet.fit, newx=x_test, s=cv.ridge$lambda.1se)>.5)
+```
+
+```{r}
+confusionMatrix(factor(y_test), factor(y_pred_ridge), mode="everything")
+```
+
+#### MODELO LASSO
+Realizamos el entretamiento con regresion penalizada LASSO Alpha = 1. Buscamos el mejor Lambda. Utilizamos binomial al estar prediciendo una variable que toma dos posibles valores.
+
+```{r}
+set.seed(456) 
+cv.lasso <- cv.glmnet(x, y, alpha=1, family='binomial',parallel=TRUE, standardize=TRUE, type.measure='auc')
+cv.lasso$lambda.min
+min(cv.lasso$cvm)
+max(cv.lasso$cvm)
+#error estandar
+cv.lasso$lambda.1se
+```
+
+```{r}
+plot(cv.lasso)
+```
+
+```{r}
+cv.lasso$lambda.min
+```
+
+```{r}
+max(cv.lasso$cvm)
+```
+
+```{r}
+coef(cv.lasso, s=cv.lasso$lambda.min)
+```
+
+```{r}
+y_pred_lasso <- as.numeric(predict.glmnet(cv.lasso$glmnet.fit, newx=x_test, s=cv.lasso$lambda.min)>.5)
+confusionMatrix(factor(y_test), factor(y_pred_lasso), mode="everything")
+```
+
+Comparamos los AUC. Cuando se utiliza el meassure type AUC, en la variable CVM se guarda el AUC. Ver: https://es.wikipedia.org/wiki/Curva_ROC y http://rstudio-pubs-static.s3.amazonaws.com/42730_fc23dc874d5f4d08ac476b959e21250d.html
+```{r}
+AUC_ridge <- cv.ridge$cvm[cv.ridge$lambda == cv.ridge$lambda.min]
+AUC_ridge
+AUC_lasso <- cv.lasso$cvm[cv.lasso$lambda == cv.lasso$lambda.min]
+AUC_lasso
+```
+
+####Conclusiones
+>Tras entrenar sendos modelos de regresión utilizando LASSO y RIDGE, seleccionamos aquel que tiene mejor AUC. En este caso el modelo obtenido mediante LASSO.
+Cuanto más "hacia arriba y hacia la izquierda" es curva ROC de un modelo, podemos decir que el modelos es mejor. La métrica de rendimiento de las AUC es, literalmente, el "Área debajo de la curva ROC", por lo que cuanto mayor sea el área bajo esta curva, mayor será la AUC y el modelo con mejor rendimiento.
+
+****
+****
+##Apartado 5
+#####Aporta los log odds de las variables predictoras sobre la variable objetivo.
+```{r}
+exp(coef(cv.lasso, s=cv.lasso$lambda.min))
+```
+
+####Conclusiones
+>Vemos que se confirman algunas de las apreciaciones que hicimos en el primer apartado. La influencia de V9, de V6=x...
+
+****
+****
+##Apartado 6
+#####Si por cada verdadero positivo ganamos 100e y por cada falso positivo perdemos 20e. ¿ Qué rentabilidad aporta aplicar este modelo?
+
+```{r}
+confusionMatrix(factor(y_test), factor(y_pred_lasso), mode="everything")
+```
+
+Nos interesa minimizar los falsos positivos al penalizarse con 20. Entonces, si nos fijamos en la variable "precision" vemos que alcanzamos un valor de 0.9767. 
+
+Esto quiere decir que para cada 100 predicciones, tendremos 2,33(46,6e) falsos positivos y 97,67(9767e) aciertos. Por tanto cada 100 gano 9767, que supondría una rentabilidad del 97,2%.
