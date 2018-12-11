@@ -1,7 +1,8 @@
 ---
 title: "Practica Final"
-output: pdf_document
+output: html_notebook
 ---
+
 ###Modelos y Aprendizaje estadístico con R.
 ####Román López Seoane.
 ****
@@ -271,9 +272,22 @@ exp(coef(cv.lasso, s=cv.lasso$lambda.min))
 #####Si por cada verdadero positivo ganamos 100e y por cada falso positivo perdemos 20e. ¿ Qué rentabilidad aporta aplicar este modelo?
 
 ```{r}
-confusionMatrix(factor(y_test), factor(y_pred_lasso), mode="everything")
+matrix<-confusionMatrix(factor(y_test), factor(y_pred_lasso), mode="everything")
+matrix
 ```
 
 Nos interesa minimizar los falsos positivos al penalizarse con 20. Entonces, si nos fijamos en la variable "precision" vemos que alcanzamos un valor de 0.9767. 
 
 Esto quiere decir que para cada 100 predicciones, tendremos 2,33(46,6e) falsos positivos y 97,67(9767e) aciertos. Por tanto cada 100 gano 9767, que supondría una rentabilidad del 97,2%.
+
+```{r}
+#calculo de la rentabilidad.
+porcentage_ganancias<-as.double(matrix$byClass["Precision"]*100)
+porcentage_perdidas<-100-ganancias
+balance<-(porcentage_ganancias*100)-(porcentage_perdidas*20)
+rentabilidad<-balance/100
+rentabilidad
+
+
+```
+
