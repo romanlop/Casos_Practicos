@@ -121,6 +121,7 @@ for i in list(set(datos.classes)):
     print ("Estados integrantes del Clúster número ",i,":")
     print (datos.loc[datos['classes'] == i]['State'])
 
+print(kmeans.cluster_centers_[:, 0])
 
 plt.title("Datos sobre componentes principales.")
 plt.scatter(*zip(*componentes_principales))

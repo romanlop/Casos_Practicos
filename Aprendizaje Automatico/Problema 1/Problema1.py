@@ -76,12 +76,15 @@ datos.dropna(axis=0, how='any', thresh=None, subset=None, inplace=False)
 consumo = datos['mpg']
 datos = datos.drop('mpg',axis=1)
 
+#Creamos variables dummies para año y origen
+datos=pd.get_dummies(datos,columns=['model_year','origin'])
 
 #Dividir los datos para train y test.
 train_car, test_car, train_mpg, test_mpg = train_test_split( datos, 
                                                             consumo, 
                                                             test_size=1/7.0, 
                                                             random_state=0)
+
 
 
 print("\n########################################################")
