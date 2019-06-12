@@ -1,0 +1,30 @@
+Quiero sps00 O 
+una di0fs0 B-NP 
+pizza ncfs000 I-NP 
+y cc O 
+quiero da0mp0 O 
+dos dn0cp0 B-NP 
+pollos ncmp000 I-NP 
+. Fp O 
+. . O
+
+Quiero da0mp0 O 
+tres dn0cp0 B-NP 
+pollos ncmp000 I-NP 
+y cc O 
+dos dn0cp0 B-NP 
+pasteles ncmp000 I-NP 
+. Fp O 
+. . O
+
+Me pp1cs000 O 
+gustaria vmip3s0 O 
+comer vmn0000 O 
+cuatro dn0cp0 B-NP 
+helados ncmp000 I-NP 
+y cc O 
+una di0fs0 B-NP 
+paella ncfs000 I-NP 
+. Fp O 
+. . O
+
