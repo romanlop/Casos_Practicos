@@ -17,18 +17,23 @@ from nltk.tag.hmm import HiddenMarkovModelTagger
 import dill
 from nltk import conlltags2tree, tree2conlltags
 from nltk.corpus import conll2000
+import re
 
 ###############################################################################
 
 #Corpus en castellano.
 cess_sents = cess.tagged_sents()
 
-
 #Frases de ejemplo
-corpus_ejemplo=['Buenos días. Quiero una pizza y quiero dos pollos.',
-                'Buenos días. Quiero tres pollos y  dos pasteles.',
-                'Hola. Me gustaria comer cuatro helados y una paella.',
-                'Me gustaria comer cuatro filetes y dos ensaladas. También quiero un helado.']
+#TODO -> Meterlo en una excel o csv o similar...
+corpus_ejemplo=['Quiero una pizza. Quiero dos pollos.',
+                'Quiero una tortilla. Tambien dos salchichas.',
+                'Quiero un pescado, tambien quiero dos cervezas.',
+                'Quiero tres pollos, tambien  dos pasteles.',
+                'Me gustaria comer cuatro helados, una paella ademas carne.',
+                'Queria una hamburguesa.',
+                'Me gustaria encargar dos paellas.',
+                'Me gustaria comer cuatro filetes con dos pasteles. Ademas quiero un helado.']
 
 #Tiene que ser la ruta completa
 corpus_file='/Users/Ruman/Desktop/DOC Master/Repositorio GITHUB/Casos_Practicos/Mineria Texto - PLN/corpus/corpus_regex.txt'
@@ -36,99 +41,122 @@ corpus_file='/Users/Ruman/Desktop/DOC Master/Repositorio GITHUB/Casos_Practicos/
 #Corpus que vamos a crear con REXPARSER.
 corpus_comida=""
 
+#Diccionario
+dict_comida={}
 ###############################################################################
 
 
-#Cambiarlo para meter frases de ejemplo!!!!
-
-
 #Defición de funciones.
-def realizar_pedido():
-    for pedido in corpus_ejemplo:
+def realizar_pedido(option,tagger):
+    pedido=1000
+    while pedido!= "exit":
+        print("Buenos días. ¿Cuál es su pedido?. Introduzca exit para salir.")
+        pedido=input()
         if pedido != "exit":
             if int(option)==1:
-                print("Opción 1. Regex Parser")
-                procesado_regex(pedido)
-        
+                test_regex(pedido,testmode=True)
+
             elif int(option)==2:
                 print("Opción 2. Unigram tagger")
-                procesado_unigram(pedido)
-        
+                test_unigram(pedido,tagger)
+
             elif int(option)==3:
                 print("Opción 3. Bigram Tagger")
-    
+
+
             elif int(option)==4:
                 print("Opción 4. NaiveBayes Classifier")
         else:
             break
 
-    return pedido
+    return pedido   
 
 
-#Crea el fichero de corpus.
-def procesado_regex(texto_entrada):
+#Crea el fichero de corpus para luego entrenar el resto de métodos.
+def train_regex(corpus_training):
+    for corpus in corpus_training:
+        tags = test_regex(corpus,testmode=False)
+        #Guardar esto en formato IOB para entrenar los otros corpus...
+        #TODO -> Cambiar este métido por apartado 4.2 -> TREES NLTK BOOK
+        with open(corpus_file, 'a+', encoding="iso-8859-1") as f: 
+            for item in tags:
+                for l in item:
+                    f.write(str(l))
+                    f.write(" ")
+                f.write("\n")
+            #f.write(". . O")
+            f.write("\n")
+            f.write("\n")
+        f.close()
+    return 0
+    
+
+def test_regex(frases, testmode):
     #Separamos en frases.
-    frases = nltk.sent_tokenize(texto_entrada)
+    frases = nltk.sent_tokenize(frases)
     #Tokenizamos.
     tokens = [nltk.word_tokenize(frase) for frase in frases]
     #Aplicamos el hidden tager 
     tagged = [hmm_tagger.tag(token) for token in tokens]
-    #print ("TAGGER:",tagged)
-    #definimos la gramática.
-    #grammar = "NP: {(<di0ms0>|<dn0cp0>|<pi0ms000>|<di0fs0>)+(<ncms000>|<ncmp000>|<ncfs000>)+}"
-    #MEJORARLO CON NÚMEROS Y DEMÁS...
+    #TODO: MEJORARLO CON NÚMEROS Y DEMÁS... Pincho de tortilla...
     cp = nltk.RegexpParser('''
                            COMIDA: {(<ncms000>|<ncmp000>|<ncfs000>)+}
                            CANTIDAD: {(<di0ms0>|<dn0cp0>|<pi0ms000>|<di0fs0>)+}
                            ''')
-    chunked = []
     #Aplicamos Regexparses sobre nuestros tokens tageados.
     for s in tagged:
         result=cp.parse(s)
-    #print(result)
-    #result.draw()
-    iob_tags = tree2conlltags(result)
-    #print (iob_tags)
-    #Guardar esto en formato IOB para entrenar los otros corpus...
-    print (iob_tags)
-    with open(corpus_file, 'a+') as f: 
-        for item in iob_tags:
-            for l in item:
-                f.write(str(l))
-                f.write(" ")
-            f.write("\n")
-        f.write(". . O")
-        f.write("\n")
-        f.write("\n")
-    f.close()
-    return 0
+        #result.draw()
+        if testmode==True:
+            diccionario=diccionario_regex(result)
+            print(diccionario)
+        iob_tags = tree2conlltags(result)
+        #print(iob_tags)
+    return iob_tags
+
+#TODO. Si no detecta ninguna cantidad casca.
+def diccionario_regex(t):
+    for subtree in t.subtrees():
+        if subtree.label() == 'CANTIDAD':
+            cantidad=str(subtree.leaves()).split(" ")[0]
+            cantidad=cantidad[3:-2]
+            continue
+        elif subtree.label() == 'COMIDA': 
+            comida=str(subtree.leaves()).split(" ")[0]
+            comida=comida[3:-2]
+            if cantidad==str(""):
+                cantidad="una"
+            dict_comida[str(comida)]=str(cantidad)
+            comida=""
+            cantidad=""
+            continue
+    return dict_comida
+
+
+#train UnigramTagger.
+def train_unigram(fichero):
+    corpus_comida=conll2000.chunked_sents(fichero, chunk_types=['COMIDA','CANTIDAD'])
+    train_data = [[(w,c) for w,t,c in nltk.chunk.tree2conlltags(sent)]
+                      for sent in corpus_comida]
+    print(train_data)
+    tagger=nltk.UnigramTagger(train_data)
+    """unigramChk = UnigramChunker(corpus_comida)
+    print("Entrenado!!!")
+    sentence = [('Quiero', 'sps00'), ('una', 'di0fs0'), ('pizza', 'ncfs000'), ('y', 'cc'), ('dos', 'dn0cp0'), ('pollos', 'ncmp000')]"""
+    return tagger
+
+def test_unigram(frases, tagger):
+    print("TEST")
+    #Separamos en frases.
+    frases = nltk.sent_tokenize(frases)
+    #Tokenizamos.
+    tokens = [nltk.word_tokenize(frase) for frase in frases]
+    #Aplicamos el hidden tager 
+    tagged=[]
+    for token in tokens:
+       tagged.append(tagger.tag(token))
+    print(tagged)
     
-
-
-def parser_IOB(fichero):
-    corpus_comida=conll2000.chunked_sents(fichero, chunk_types=['NP'])
-    return corpus_comida
-
-"""TODO. ENTRENAR EL UNIGRAM o BIGRAM CON EL CORPUS ANTERIOR QUE ME CURRE.
-PROBAR CON COSAS QUE NO SEAN COMIDA. PILLAR EL CÓDIGO DE EJEMPLO.
-"""
-
-def procesado_unigram(texto_entrada):
-    corpus = parser_IOB(corpus_file)
-    print(corpus[1])
-    """print("procesado_unigram")
-    #Leer el fichero de corpus
-    f=open(corpus_file, "r")
-    contents = f.read()
-    corpus_comida = nltk.chunk.conllstr2tree(contents, chunk_types=['NP'])
-    print(corpus_comida)
-    #texto_entrada = "Hola. Buenos días. Quería una pizza con queso. Mi domilicio está en Santiago."
-    #frases = nltk.sent_tokenize(texto_entrada)
-    #tokens = [nltk.word_tokenize(frase) for frase in frases]
-    #tagged = [unigram_tagger.tag(token) for token in tokens]
-    #print ("TAGGER UNIGRAMA CAT:",tagged)"""
-    return 0
-
 
 def procesado_bigram(texto_entrada):
     print("procesado_bigram")
@@ -180,37 +208,51 @@ else:
 
 #CAMBIAR ESTO -> PRIMERO EJECUTAR EL REGEX LUEGO EL RESTO EN ORDEN...
 #Menú principal
-print("Selección del modo de funcionamiento:")
-print("1. RegexParser")
-print("2. Unigram tagger")
-print("3. Bigram Tagger")
-print("4. NaiveBayes Classifier")
-print("Otro para salir.")
-option = input()
+print("Selección una Opción:")
+print("1.Entrenamiento RegexParser.")
+print("2.Test.")
+print("3.Salir.")
+opcion=input()
 
-if int(option)==1:
-    print("Ha seleccionado la opción 1. RegexParser")
-    pedido=realizar_pedido()
-    #exit(0)
+if int(opcion)==1:
+    print("Entrenando RegexParser...")
+    train_regex(corpus_ejemplo)
+        
+
+elif int(opcion)==2:
+    print("####################################")
+    print("1. Test RegexParser")
+    print("2. Test Unigram tagger")
+    print("3. Test Bigram Tagger")
+    print("4. Test NaiveBayes Classifier")
+    print("Exit para salir.")
+    opcion3=input()
+    if int(opcion3)==1:
+        print("1. Test RegexParser")
+        pedido=realizar_pedido(1)
+
+    elif int(opcion3)==2:
+        print("Opción 2. Test Unigram tagger")
+        unigram_tagger=train_unigram(corpus_file)
+        pedido=realizar_pedido(2,unigram_tagger)
+        
+    elif int(opcion3)==3:
+        print("Opción 3. Test Bigram Tagger")
+        pedido=realizar_pedido()
+        
+    elif int(opcion3)==4:
+        print("Opción 4. Test NaiveBayes Classifier")
+        pedido=realizar_pedido()
+        
+    else:
+        print("Adios") 
+
+elif int(opcion)==3:
+    print("Adios")   
     
-elif int(option)==2:
-    print("Opción 2. Unigram tagger")
-    pedido=realizar_pedido()
-    
-elif int(option)==3:
-    print("Opción 3. Bigram Tagger")
-    pedido=realizar_pedido()
-    
-elif int(option)==4:
-    print("Opción 4. NaiveBayes Classifier")
-    pedido=realizar_pedido()
-    
+
 else:
-    exit(0)
-    
+    print("Adios") 
 
-
-#Recuperar Arbol -> tree = conlltags2tree(iob_tags)
-#print tree
 
 

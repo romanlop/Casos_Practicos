@@ -1,0 +1,22 @@
+yo 0PRP O
+queria VBD O
+una DT I-Cantidad
+hamburguesa NN I-Comida
+
+yo 0PRP O
+queria VBD O
+una DT I-Cantidad
+hamburguesa NN I-Comida
+
+yo 0PRP O
+queria VBD O
+una DT I-Cantidad
+hamburguesa NN I-Comida
+
+Quiero da0mp0 O 
+dos dn0cp0 B-CANTIDAD 
+pollos ncmp000 B-COMIDA 
+
+Tambien da0mp0 O 
+dos dn0cp0 B-CANTIDAD 
+salchichas ncmp000 B-COMIDA 
