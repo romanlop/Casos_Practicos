@@ -24,13 +24,13 @@ import re
 #Corpus en castellano.
 cess_sents = cess.tagged_sents()
 
-#Frases de ejemplo
+#Frases de ejemplo. 
 corpus_ejemplo=['Quiero una pizza.', 
-                'Quiero un pollo asado']
-
-"""
-#Frases de ejemplo
-corpus_ejemplo=['Quiero una pizza.', 
+                'Quiero 2 pollos con tomate',
+                'Quiero una pizza fresca.', 
+                'Quiero una pescado fresco.', 
+                'Quiero una pincho de tortilla.', 
+                'Quiero un pollo asado',
                 'Quiero un pollo asado',
                 'Quiero un pincho de tortilla',
                 'Quiero dos pollos.',
@@ -48,7 +48,8 @@ corpus_ejemplo=['Quiero una pizza.',
                 'Me gustaria comer 4 filetes con 3 pasteles.', 
                 'Ademas quiero 5 helados.',
                 'Quiero 1 pizza.',
-                'Quiero 2 pollos.']"""
+                'Quiero 2 pollos con tomate',
+                'Quiero 2 pollos.']
 
 
 #Tiene que ser la ruta completa
@@ -94,19 +95,15 @@ def train_regex(corpus_training):
         tags = test_regex(corpus,testmode=False)
         #Guardar esto en formato IOB para entrenar los otros corpus...
         #TODO -> Cambiar este métido por apartado 4.2 -> TREES NLTK BOOK
-        print(tags)
-        """
         with open(corpus_file, 'a+', encoding="iso-8859-1") as f: 
             for item in tags:
                 for l in item:
                     f.write(str(l))
                     f.write(" ")
                 f.write("\n")
-            #f.write(". . O")
             f.write("\n")
             f.write("\n")
         f.close()
-        """
     return 0
     
 
@@ -117,11 +114,11 @@ def test_regex(frases, testmode):
     tokens = [nltk.word_tokenize(frase) for frase in frases]
     #Aplicamos el hidden tager 
     tagged = [hmm_tagger.tag(token) for token in tokens]
-    #TODO: MEJORARLO CON Pincho de tortilla... 
-    #Comida: Detecta nombres de comida simples.
+    #Comida: Detecta nombres de comida simples. Nombres seguidos de un adjetivo (pollo asado). Detecta comida tipo "pincho de tortilla" o "pollo con tomate"
     #Cantidad: Detecta letras y números
     cp = nltk.RegexpParser('''
-                           COMIDA: {(<ncms000>|<ncmp000>|<ncfs000>)+<aq0ms0>*}   
+                           COMIDA: {(<ncms000>|<ncmp000>|<ncfs000>|<Fpt>)+(<aq0ms0|aq0fs0>)*<sps00>+(<ncms000>|<ncmp000>|<ncfs000>|<da0fs0>|<Fpt>)+}   
+                           COMIDA: {(<ncms000>|<ncmp000>|<ncfs000>|<Fpt>)+(<aq0ms0|aq0fs0>)*}   
                            CANTIDAD: {(<di0ms0>|<dn0cp0>|<pi0ms000>|<di0fs0>|<Z>)+}
                            ''')
     #Aplicamos Regexparses sobre nuestros tokens tageados.
@@ -132,10 +129,12 @@ def test_regex(frases, testmode):
             diccionario=diccionario_regex(result)
             print(diccionario)
         iob_tags = tree2conlltags(result)
+        
     return iob_tags
 
-#TODO. Si no detecta ninguna cantidad casca.
+#Incluye los resultados del parser regex en un diccionario que devuelve como resultado.
 def diccionario_regex(t):
+    cantidad=""
     for subtree in t.subtrees():
         if subtree.label() == 'CANTIDAD':
             cantidad=str(subtree.leaves()).split(" ")[0]
@@ -156,6 +155,7 @@ def diccionario_regex(t):
 #train UnigramTagger.
 def train_unigram(fichero):
     corpus_comida=conll2000.chunked_sents(fichero, chunk_types=['COMIDA','CANTIDAD'])
+    print(corpus_comida)
     train_data = [[(w,c) for w,t,c in nltk.chunk.tree2conlltags(sent)]
                       for sent in corpus_comida]
     print(train_data)
@@ -169,29 +169,16 @@ def test_unigram(frases, tagger):
     tokens = [nltk.word_tokenize(frase) for frase in frases]
     #for token in tokens:
     tagged=tagger.tag_sents(tokens)
-    nerResult = [nltk.ne_chunk(pts) for pts in tagged]
-    print(nerResult)
+    tree=nltk.chunk.conlltags2tree(tagged)
     return tagged
     
     
 
 def procesado_bigram(texto_entrada):
-    print("procesado_bigram")
-    #Corpus en castellano.
-    cess_sents = cess.tagged_sents()
-    # Train el Bigram Tagger
-    bi_tag = bt(cess_sents[:train])
-    print("procesado_bigram")
-    
     return 0
 
 
 def procesado_naive(texto_entrada):
-    frases = nltk.sent_tokenize(texto_entrada)
-    #sentences = [nltk.word_tokenize(sent) for sent in sentences] 
-    #sentences = [nltk.pos_tag(sent) for sent in sentences]
-    print("procesado_naive")
-    
     return 0
 
 
