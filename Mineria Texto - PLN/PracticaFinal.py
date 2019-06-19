@@ -25,15 +25,31 @@ import re
 cess_sents = cess.tagged_sents()
 
 #Frases de ejemplo
-#TODO -> Meterlo en una excel o csv o similar...
-corpus_ejemplo=['Quiero una pizza. Quiero dos pollos.',
-                'Quiero una tortilla. Tambien dos salchichas.',
+corpus_ejemplo=['Quiero una pizza.', 
+                'Quiero un pollo asado']
+
+"""
+#Frases de ejemplo
+corpus_ejemplo=['Quiero una pizza.', 
+                'Quiero un pollo asado',
+                'Quiero un pincho de tortilla',
+                'Quiero dos pollos.',
+                'Quiero tres pizzas y tambien quiero un pollo.',
+                'Quiero una tortilla.',
+                'Tambien dos salchichas.',
+                'Quiero un pincho de tortilla.',
                 'Quiero un pescado, tambien quiero dos cervezas.',
                 'Quiero tres pollos, tambien  dos pasteles.',
                 'Me gustaria comer cuatro helados, una paella ademas carne.',
                 'Queria una hamburguesa.',
                 'Me gustaria encargar dos paellas.',
-                'Me gustaria comer cuatro filetes con dos pasteles. Ademas quiero un helado.']
+                'Me gustaria comer cuatro filetes con dos pasteles.',
+                'Ademas quiero un helado.',
+                'Me gustaria comer 4 filetes con 3 pasteles.', 
+                'Ademas quiero 5 helados.',
+                'Quiero 1 pizza.',
+                'Quiero 2 pollos.']"""
+
 
 #Tiene que ser la ruta completa
 corpus_file='/Users/Ruman/Desktop/DOC Master/Repositorio GITHUB/Casos_Practicos/Mineria Texto - PLN/corpus/corpus_regex.txt'
@@ -78,6 +94,8 @@ def train_regex(corpus_training):
         tags = test_regex(corpus,testmode=False)
         #Guardar esto en formato IOB para entrenar los otros corpus...
         #TODO -> Cambiar este métido por apartado 4.2 -> TREES NLTK BOOK
+        print(tags)
+        """
         with open(corpus_file, 'a+', encoding="iso-8859-1") as f: 
             for item in tags:
                 for l in item:
@@ -88,6 +106,7 @@ def train_regex(corpus_training):
             f.write("\n")
             f.write("\n")
         f.close()
+        """
     return 0
     
 
@@ -98,10 +117,12 @@ def test_regex(frases, testmode):
     tokens = [nltk.word_tokenize(frase) for frase in frases]
     #Aplicamos el hidden tager 
     tagged = [hmm_tagger.tag(token) for token in tokens]
-    #TODO: MEJORARLO CON NÚMEROS Y DEMÁS... Pincho de tortilla...
+    #TODO: MEJORARLO CON Pincho de tortilla... 
+    #Comida: Detecta nombres de comida simples.
+    #Cantidad: Detecta letras y números
     cp = nltk.RegexpParser('''
-                           COMIDA: {(<ncms000>|<ncmp000>|<ncfs000>)+}
-                           CANTIDAD: {(<di0ms0>|<dn0cp0>|<pi0ms000>|<di0fs0>)+}
+                           COMIDA: {(<ncms000>|<ncmp000>|<ncfs000>)+<aq0ms0>*}   
+                           CANTIDAD: {(<di0ms0>|<dn0cp0>|<pi0ms000>|<di0fs0>|<Z>)+}
                            ''')
     #Aplicamos Regexparses sobre nuestros tokens tageados.
     for s in tagged:
@@ -111,7 +132,6 @@ def test_regex(frases, testmode):
             diccionario=diccionario_regex(result)
             print(diccionario)
         iob_tags = tree2conlltags(result)
-        #print(iob_tags)
     return iob_tags
 
 #TODO. Si no detecta ninguna cantidad casca.
@@ -140,22 +160,19 @@ def train_unigram(fichero):
                       for sent in corpus_comida]
     print(train_data)
     tagger=nltk.UnigramTagger(train_data)
-    """unigramChk = UnigramChunker(corpus_comida)
-    print("Entrenado!!!")
-    sentence = [('Quiero', 'sps00'), ('una', 'di0fs0'), ('pizza', 'ncfs000'), ('y', 'cc'), ('dos', 'dn0cp0'), ('pollos', 'ncmp000')]"""
     return tagger
 
 def test_unigram(frases, tagger):
-    print("TEST")
     #Separamos en frases.
     frases = nltk.sent_tokenize(frases)
     #Tokenizamos.
     tokens = [nltk.word_tokenize(frase) for frase in frases]
-    #Aplicamos el hidden tager 
-    tagged=[]
-    for token in tokens:
-       tagged.append(tagger.tag(token))
-    print(tagged)
+    #for token in tokens:
+    tagged=tagger.tag_sents(tokens)
+    nerResult = [nltk.ne_chunk(pts) for pts in tagged]
+    print(nerResult)
+    return tagged
+    
     
 
 def procesado_bigram(texto_entrada):
@@ -184,27 +201,11 @@ def procesado_naive(texto_entrada):
 if path.exists('spanish_hmm.plk'):
     hmm_tagger = joblib.load('spanish_hmm.plk')
 else:
-    #Entrenamos el Hidden tagger
+    #Entrenamos el Hidden tagger y lo guardamos en un fichero para sucesivas ocasiones
     hmm_tagger = HiddenMarkovModelTagger.train(cess_sents)
     with open('spanish_hmm.plk', 'wb') as pickle_file:
         dill.dump(hmm_tagger, pickle_file) 
 
-
-if path.exists('unigram.pkl'):
-    unigram_tagger = joblib.load('unigram.pkl')
-else:
-    #Entrenamos el Unigram Tagger
-    unigram_tagger = UnigramTagger(cess_sents)
-    joblib.dump(unigram_tagger, 'unigram.pkl') 
-    
-    
-if path.exists('bigram.pkl'):
-    bigram_tagger = joblib.load('bigram.pkl')  
-else:
-    #Entrenamos el Bigram Tagger
-    bigram_tagger = BigramTagger(cess_sents, backoff=unigram_tagger)
-    joblib.dump(bigram_tagger, 'bigram.pkl')     
-    
 
 #CAMBIAR ESTO -> PRIMERO EJECUTAR EL REGEX LUEGO EL RESTO EN ORDEN...
 #Menú principal
@@ -229,7 +230,7 @@ elif int(opcion)==2:
     opcion3=input()
     if int(opcion3)==1:
         print("1. Test RegexParser")
-        pedido=realizar_pedido(1)
+        pedido=realizar_pedido(1,False)
 
     elif int(opcion3)==2:
         print("Opción 2. Test Unigram tagger")
